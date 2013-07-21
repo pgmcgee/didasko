@@ -96,8 +96,8 @@ function Turtle() {
 		},
 		moveForward: function(distance) {
 			var rad = deg2rad(this.rotation);
-			var x = Math.round(-distance * Math.sin(rad));
-			var y = Math.round(distance * Math.cos(rad));
+			var x = Math.round(distance * Math.sin(rad));
+			var y = Math.round(-distance * Math.cos(rad));
 
 			console.log(x, " ", y);
 			this.move(x, y);
