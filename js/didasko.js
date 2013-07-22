@@ -12,6 +12,85 @@ function deg2rad(deg) {
 	return Math.PI * (deg / 180);
 }
 
+function drawpath( canvas, pathstr, duration, attr, callback )
+{
+  var guide_path = canvas.path( pathstr ).attr( { stroke: "none", fill: "none" } );
+  var path = canvas.path( guide_path.getSubpath( 0, 1 ) ).attr( attr );
+  var total_length = guide_path.getTotalLength( guide_path );
+  var last_point = guide_path.getPointAtLength( 0 );
+  var start_time = new Date().getTime();
+  var interval_length = 50;
+  var result = path;        
+
+  var interval_id = setInterval( function () {
+    var elapsed_time = new Date().getTime() - start_time;
+    var this_length = elapsed_time / duration * total_length;
+    var subpathstr = guide_path.getSubpath( 0, this_length );            
+    attr.path = subpathstr;
+
+    path.animate( attr, interval_length );
+    if ( elapsed_time >= duration )
+      {
+        clearInterval( interval_id );
+        if ( callback != undefined ) callback();
+        guide_path.remove();
+      }                                       
+  }, interval_length );  
+  return result;
+}
+
+function TurtleManager() {
+  return {
+    turtles: [],
+    addTurtle: function (turtle) {
+      this.turtles.push(turtle);
+    },
+    allTurtlesToFront: function () {
+      $.each(this.turtles, function (idx, turtle) {
+        turtle.toFront();
+      });
+    }
+  };
+}
+
+TURTLE_MANAGER = TurtleManager();
+
+function AnimationQueue() {
+	return {
+		_transformQueue: [],
+		_currentlyAnimating: false,
+    animateTransform: function (transformString, context) {
+			if(this._currentlyAnimating) {
+				this._transformQueue.push({ transform: transformString, context: context });
+			}
+			else {
+				this._currentlyAnimating = true;
+        var queue = this;
+				var animate = function (string, that) {
+          console.log(that);
+					that.turtle.animate({ transform: string }, 300, 'linear', function () {
+						if (queue._transformQueue.length > 0) {
+							var queuedValue = queue._transformQueue.shift();
+							animate(queuedValue.transform, queuedValue.context);
+						}
+						else {
+							queue._currentlyAnimating = false;
+						}
+					});
+          if (that.penIsDown) {
+            var pathString = "M" + that.oldX + "," + that.oldY + "L" + that.x + "," + that.y;
+            drawpath(PAPER, pathString, 300, { stroke: that._color }, function() {});
+          }
+          TURTLE_MANAGER.allTurtlesToFront();
+				};
+				animate(transformString, context);
+			}
+    }
+	}
+}
+
+var ANIMATION_QUEUE = AnimationQueue();
+
 function Turtle() {
 	var Turtle = {
 		turtle: PAPER.path(TURTLE_DRAWING).attr({ fill: "black", stroke: "black" }),
@@ -19,7 +98,7 @@ function Turtle() {
 		x: 28.436,
 		y: 15.099,
 		rotation: 0,
-		color: "#000",
+		_color: "#000",
 		font: { 'font-family': 'Arial', 'font-size': '16px' },
 		_transform: function(params) {
 			params = $.extend({
@@ -31,9 +110,9 @@ function Turtle() {
 			/* Translate the turtle to center the drawing */
 			var transformString = "T" + (params.x - TURTLE_X_ADJUSTMENT) + "," + (params.y - TURTLE_Y_ADJUSTMENT);
 			transformString    += "R" + (params.rotation + TURTLE_ROTATION_ADJUSTMENT);
-			this.turtle.transform(transformString);
 
-			this.turtle.toFront();
+      var copy = $.extend(true, {}, this);
+      ANIMATION_QUEUE.animateTransform(transformString, copy);
 		},
 		penUp: function() {
 			this.penIsDown = false;
@@ -45,15 +124,11 @@ function Turtle() {
 			this.turtle.remove();
 		},
 		move: function(x, y) {
-			var newX = this.x + x;
-			var newY = this.y + y;
+      this.oldX = this.x;
+      this.oldY = this.y;
 
-			if (this.penIsDown) {
-				PAPER.path("M" + this.x + "," + this.y + "L" + newX + "," + newY).attr({ stroke: this.color });
-			}
-
-			this.x = newX;
-			this.y = newY;
+			this.x += x;
+			this.y += y;
 
 			this._transform({ x: this.x, y: this.y });
 		},
@@ -70,8 +145,8 @@ function Turtle() {
 			this.move(amount, 0);
 		},
 		color: function(color) {
-			this.color = color;
-			this.turtle.attr({ fill: this.color });
+			this._color = color;
+			this.turtle.attr({ fill: this._color });
 		},
 		fontSize: function(size) {
 			this.font['font-size'] = size;
@@ -84,6 +159,9 @@ function Turtle() {
 			text.attr(this.font);
 		},
 		rotate: function(deg) {
+      this.oldX = this.x;
+      this.oldY = this.y;
+
 			this.rotation += deg;
 			if (this.rotation > 180) {
 				this.rotation -= 360;
@@ -99,13 +177,14 @@ function Turtle() {
 			var x = Math.round(distance * Math.sin(rad));
 			var y = Math.round(-distance * Math.cos(rad));
 
-			console.log(x, " ", y);
 			this.move(x, y);
 		},
 		moveBackward: function(distance) {
 			this.moveForward(-distance);
 		}
 	};
+
+  TURTLE_MANAGER.addTurtle(Turtle.turtle);
 
 	Turtle.move(-28.436, -15.099);
 	Turtle.move(DRAWING_AREA.width() / 2, DRAWING_AREA.height() / 2);
@@ -127,8 +206,6 @@ turtle.moveDown(20);
 turtle.fontSize('18px');
 turtle.write("This is some text");
 turtle.moveUp(20);
-
-turtle.remove();
 
 
 var another = Turtle();
