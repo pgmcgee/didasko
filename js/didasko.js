@@ -10,73 +10,73 @@ var DRAWING_AREA = $('#drawing-area').first();
 var PAPER = Raphael("drawing-area", "100%", "100%");
 
 function deg2rad(deg) {
-	return Math.PI * (deg / 180);
+    return Math.PI * (deg / 180);
 }
 
 function distance(x1, x2, y1, y2) {
-	var diffX = x1 - x2;
-	var diffY = y1 - y2;
+    var diffX = x1 - x2;
+    var diffY = y1 - y2;
 
-	return Math.sqrt(diffX * diffX + diffY * diffY);
+    return Math.sqrt(diffX * diffX + diffY * diffY);
 }
 
 function drawpath( canvas, pathstr, duration, attr, callback )
 {
-	var guide_path = canvas.path( pathstr ).attr( { stroke: "none", fill: "none" } );
-	var path = canvas.path( guide_path.getSubpath( 0, 1 ) ).attr( attr );
-	var total_length = guide_path.getTotalLength( guide_path );
-	var last_point = guide_path.getPointAtLength( 0 );
-	var start_time = new Date().getTime();
-	var interval_length = 50;
-	var result = path;        
+    var guide_path = canvas.path( pathstr ).attr( { stroke: "none", fill: "none" } );
+    var path = canvas.path( guide_path.getSubpath( 0, 1 ) ).attr( attr );
+    var total_length = guide_path.getTotalLength( guide_path );
+    var last_point = guide_path.getPointAtLength( 0 );
+    var start_time = new Date().getTime();
+    var interval_length = 50;
+    var result = path;        
 
-	var interval_id = setInterval( function () {
-		var elapsed_time = new Date().getTime() - start_time;
-		var this_length = elapsed_time / duration * total_length;
-		var subpathstr = guide_path.getSubpath( 0, this_length );            
-		attr.path = subpathstr;
+    var interval_id = setInterval( function () {
+	var elapsed_time = new Date().getTime() - start_time;
+	var this_length = elapsed_time / duration * total_length;
+	var subpathstr = guide_path.getSubpath( 0, this_length );            
+	attr.path = subpathstr;
 
-		path.animate( attr, interval_length );
-		if ( elapsed_time >= duration )
-		{
-			clearInterval( interval_id );
-			if ( callback != undefined ) callback();
-			guide_path.remove();
-		}                                       
-	}, interval_length );  
-	return result;
+	path.animate( attr, interval_length );
+	if ( elapsed_time >= duration )
+	{
+	    clearInterval( interval_id );
+	    if ( callback != undefined ) callback();
+	    guide_path.remove();
+	}                                       
+    }, interval_length );  
+    return result;
 }
 
 function TurtleManager() {
-	return {
-		turtles: [],
-		addTurtle: function (turtle) {
-			this.turtles.push(turtle);
-		},
-		allTurtlesToFront: function () {
-			$.each(this.turtles, function (idx, turtle) {
-				turtle.toFront();
-			});
-		}
-	};
+    return {
+	turtles: [],
+	addTurtle: function (turtle) {
+	    this.turtles.push(turtle);
+	},
+	allTurtlesToFront: function () {
+	    $.each(this.turtles, function (idx, turtle) {
+		turtle.toFront();
+	    });
+	}
+    };
 }
 
 TURTLE_MANAGER = TurtleManager();
 
 function AnimationQueue() {
-	return {
-		_transformQueue: [],
-		_currentlyAnimating: false,
-		animateTransform: function (transformString, context) {
-	        if(this._currentlyAnimating) {
+    return {
+	_transformQueue: [],
+	_currentlyAnimating: false,
+	animateTransform: function (transformString, context) {
+	    if(this._currentlyAnimating) {
                 this._transformQueue.push({ transform: transformString, context: context });
             }
             else {
                 this._currentlyAnimating = true;
-				var queue = this;
+		var queue = this;
                 var animate = function (string, that) {
-					var dist = distance(that.x, that.oldX, that.y, that.oldY);
-					var time = SPEED * dist;
+		    var dist = distance(that.x, that.oldX, that.y, that.oldY);
+		    var time = SPEED * dist;
                     that.turtle.animate({ transform: string }, time, 'linear', function () {
                         if (queue._transformQueue.length > 0) {
                             var queuedValue = queue._transformQueue.shift();
@@ -86,15 +86,15 @@ function AnimationQueue() {
                             queue._currentlyAnimating = false;
                         }
                     });
-					if (that.penIsDown && dist > 0) {
-						var pathString = "M" + that.oldX + "," + that.oldY + "L" + that.x + "," + that.y;
-						drawpath(PAPER, pathString, time, { stroke: that._color }, function() {});
-					}
-					TURTLE_MANAGER.allTurtlesToFront();
+		    if (that.penIsDown && dist > 0) {
+			var pathString = "M" + that.oldX + "," + that.oldY + "L" + that.x + "," + that.y;
+			drawpath(PAPER, pathString, time, { stroke: that._color }, function() {});
+		    }
+		    TURTLE_MANAGER.allTurtlesToFront();
                 };
                 animate(transformString, context);
             }
-		}
+	}
     }
 }
 
@@ -110,7 +110,7 @@ function Turtle() {
         _color: "#000",
         font: { 'font-family': 'Arial', 'font-size': '16px' },
         _transform: function(params, animate) {
-			animate = typeof animate !== 'undefined' ? animate : true;
+	    animate = typeof animate !== 'undefined' ? animate : true;
 
             params = $.extend({
                 x: this.x,
@@ -122,16 +122,16 @@ function Turtle() {
             var transformString = "T" + (params.x - TURTLE_X_ADJUSTMENT) + "," + (params.y - TURTLE_Y_ADJUSTMENT);
             transformString    += "R" + (params.rotation + TURTLE_ROTATION_ADJUSTMENT);
 
-			if (animate) {
-				var copy = $.extend(true, {}, this);
-				ANIMATION_QUEUE.animateTransform(transformString, copy);
-			}
-			else {
-				this.turtle.transform(transformString);
-				if (this.penIsDown) {
-					PAPER.path("M" + this.oldX + "," + this.oldY + "L" + this.x + "," + this.y).attr({ stroke: this._color });
-				}
-			}
+	    if (animate) {
+		var copy = $.extend(true, {}, this);
+		ANIMATION_QUEUE.animateTransform(transformString, copy);
+	    }
+	    else {
+		this.turtle.transform(transformString);
+		if (this.penIsDown) {
+		    PAPER.path("M" + this.oldX + "," + this.oldY + "L" + this.x + "," + this.y).attr({ stroke: this._color });
+		}
+	    }
         },
         penUp: function() {
             this.penIsDown = false;
@@ -143,10 +143,10 @@ function Turtle() {
             this.turtle.remove();
         },
         move: function(x, y, animate) {
-			animate = typeof animate !== 'undefined' ? animate : true;
+	    animate = typeof animate !== 'undefined' ? animate : true;
 
-			this.oldX = this.x;
-			this.oldY = this.y;
+	    this.oldX = this.x;
+	    this.oldY = this.y;
 
             this.x += x;
             this.y += y;
@@ -180,8 +180,8 @@ function Turtle() {
             text.attr(this.font);
         },
         rotate: function(deg) {
-			this.oldX = this.x;
-			this.oldY = this.y;
+	    this.oldX = this.x;
+	    this.oldY = this.y;
 
             this.rotation += deg;
             if (this.rotation > 180) {
@@ -205,7 +205,7 @@ function Turtle() {
         }
     };
 
-	TURTLE_MANAGER.addTurtle(Turtle.turtle);
+    TURTLE_MANAGER.addTurtle(Turtle.turtle);
 
     Turtle.move(-28.436, -15.099, false);
     Turtle.move(DRAWING_AREA.width() / 2, DRAWING_AREA.height() / 2, false);
