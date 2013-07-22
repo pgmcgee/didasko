@@ -2,6 +2,7 @@ var TURTLE_DRAWING = "M28.589,10.903l-5.828,1.612c-0.534-1.419-1.338-2.649-2.311
 var TURTLE_ROTATION_ADJUSTMENT = 14;
 var TURTLE_X_ADJUSTMENT = 16;
 var TURTLE_Y_ADJUSTMENT = 16;
+var SPEED = 3;
 
 var DRAWING_AREA = $('#drawing-area').first();
 
@@ -10,6 +11,13 @@ var PAPER = Raphael("drawing-area", "100%", "100%");
 
 function deg2rad(deg) {
 	return Math.PI * (deg / 180);
+}
+
+function distance(x1, x2, y1, y2) {
+  var diffX = x1 - x2;
+  var diffY = y1 - y2;
+
+  return Math.sqrt(diffX * diffX + diffY * diffY);
 }
 
 function drawpath( canvas, pathstr, duration, attr, callback )
@@ -67,8 +75,9 @@ function AnimationQueue() {
 				this._currentlyAnimating = true;
         var queue = this;
 				var animate = function (string, that) {
-          console.log(that);
-					that.turtle.animate({ transform: string }, 300, 'linear', function () {
+          var dist = distance(that.x, that.oldX, that.y, that.oldY);
+          var time = SPEED * dist;
+					that.turtle.animate({ transform: string }, time, 'linear', function () {
 						if (queue._transformQueue.length > 0) {
 							var queuedValue = queue._transformQueue.shift();
 							animate(queuedValue.transform, queuedValue.context);
@@ -77,9 +86,9 @@ function AnimationQueue() {
 							queue._currentlyAnimating = false;
 						}
 					});
-          if (that.penIsDown) {
+          if (that.penIsDown && dist > 0) {
             var pathString = "M" + that.oldX + "," + that.oldY + "L" + that.x + "," + that.y;
-            drawpath(PAPER, pathString, 300, { stroke: that._color }, function() {});
+            drawpath(PAPER, pathString, time, { stroke: that._color }, function() {});
           }
           TURTLE_MANAGER.allTurtlesToFront();
 				};
