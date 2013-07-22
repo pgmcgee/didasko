@@ -109,7 +109,9 @@ function Turtle() {
 		rotation: 0,
 		_color: "#000",
 		font: { 'font-family': 'Arial', 'font-size': '16px' },
-		_transform: function(params) {
+		_transform: function(params, animate) {
+      animate = typeof animate !== 'undefined' ? animate : true;
+
 			params = $.extend({
 				x: this.x,
 				y: this.y,
@@ -120,8 +122,16 @@ function Turtle() {
 			var transformString = "T" + (params.x - TURTLE_X_ADJUSTMENT) + "," + (params.y - TURTLE_Y_ADJUSTMENT);
 			transformString    += "R" + (params.rotation + TURTLE_ROTATION_ADJUSTMENT);
 
-      var copy = $.extend(true, {}, this);
-      ANIMATION_QUEUE.animateTransform(transformString, copy);
+      if (animate) {
+        var copy = $.extend(true, {}, this);
+        ANIMATION_QUEUE.animateTransform(transformString, copy);
+      }
+      else {
+        this.turtle.transform(transformString);
+        if (this.penIsDown) {
+          PAPER.path("M" + this.oldX + "," + this.oldY + "L" + this.x + "," + this.y).attr({ stroke: this._color });
+        }
+      }
 		},
 		penUp: function() {
 			this.penIsDown = false;
@@ -132,14 +142,16 @@ function Turtle() {
 		remove: function() {
 			this.turtle.remove();
 		},
-		move: function(x, y) {
+		move: function(x, y, animate) {
+      animate = typeof animate !== 'undefined' ? animate : true;
+
       this.oldX = this.x;
       this.oldY = this.y;
 
 			this.x += x;
 			this.y += y;
 
-			this._transform({ x: this.x, y: this.y });
+			this._transform({ x: this.x, y: this.y }, animate);
 		},
 		moveUp: function(amount) {
 			this.move(0, -amount);
@@ -195,8 +207,8 @@ function Turtle() {
 
   TURTLE_MANAGER.addTurtle(Turtle.turtle);
 
-	Turtle.move(-28.436, -15.099);
-	Turtle.move(DRAWING_AREA.width() / 2, DRAWING_AREA.height() / 2);
+	Turtle.move(-28.436, -15.099, false);
+	Turtle.move(DRAWING_AREA.width() / 2, DRAWING_AREA.height() / 2, false);
 	Turtle.rotate(0);
 
 	return Turtle;
