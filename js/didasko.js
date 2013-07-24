@@ -302,7 +302,7 @@ var third = Turtle();
 third.color('blue');
 third.penDown();
 
-for(var i = 0; i < 8; i++) {
+for(var i = 0; i < 7; i++) {
     third.moveForward(120);
-    third.rotate(45);
+    third.rotate(180 - (900/7));
 }
