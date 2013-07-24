@@ -65,34 +65,58 @@ TURTLE_MANAGER = TurtleManager();
 
 function AnimationQueue() {
     return {
-	_transformQueue: [],
+	_actionQueue: [],
 	_currentlyAnimating: false,
-	animateTransform: function (transformString, context) {
+
+	animateNextAction: function () {
+            if (this._actionQueue.length > 0) {
+		var queuedAction = this._actionQueue.shift();
+		this.animate(queuedAction);
+            }
+            else {
+		this._currentlyAnimating = false;
+            }
+	},
+
+        animate: function (action) {
+	    if (action.action == 'transform') {
+		var dist = distance(action.newX, action.oldX, action.newY, action.oldY);
+
+		if (dist > 0) {
+		    var time = SPEED * dist;
+		} else {
+		    var rotation = Math.abs(action.newRotation - action.oldRotation);
+		    if (rotation > 180) {
+			rotation -= 180;
+		    }
+		    var time = SPEED * rotation;
+		}
+		
+		var queue = this;
+		action.turtle.animate({ transform: action.transformString }, time, 'linear', function () {
+		    queue.animateNextAction();
+		});
+
+		if (action.penIsDown && dist > 0) {
+		    var pathString = "M" + action.oldX + "," + action.oldY + "L" + action.newX + "," + action.newY;
+		    drawpath(PAPER, pathString, time, { stroke: action.color }, function() {});
+		}
+	    } else if (action.action = 'text') {
+		var text = PAPER.text(action.x, action.y, action.text);
+		text.attr(action.font);
+		this.animateNextAction();
+	    }
+
+	    TURTLE_MANAGER.allTurtlesToFront();
+        },
+
+	animateAction: function (action) {
 	    if(this._currentlyAnimating) {
-                this._transformQueue.push({ transform: transformString, context: context });
+                this._actionQueue.push(action);
             }
             else {
                 this._currentlyAnimating = true;
-		var queue = this;
-                var animate = function (string, that) {
-		    var dist = distance(that.x, that.oldX, that.y, that.oldY);
-		    var time = SPEED * dist;
-                    that.turtle.animate({ transform: string }, time, 'linear', function () {
-                        if (queue._transformQueue.length > 0) {
-                            var queuedValue = queue._transformQueue.shift();
-                            animate(queuedValue.transform, queuedValue.context);
-                        }
-                        else {
-                            queue._currentlyAnimating = false;
-                        }
-                    });
-		    if (that.penIsDown && dist > 0) {
-			var pathString = "M" + that.oldX + "," + that.oldY + "L" + that.x + "," + that.y;
-			drawpath(PAPER, pathString, time, { stroke: that._color }, function() {});
-		    }
-		    TURTLE_MANAGER.allTurtlesToFront();
-                };
-                animate(transformString, context);
+                this.animate(action);
             }
 	}
     }
@@ -113,23 +137,38 @@ function Turtle() {
 	    animate = typeof animate !== 'undefined' ? animate : true;
 
             params = $.extend({
-                x: this.x,
-                y: this.y,
-                rotation: this.rotation
+		oldX: this.x,
+		oldY: this.y,
+                newX: this.x,
+                newY: this.y,
+                oldRotation: this.rotation,
+		newRotation: this.rotation
             }, params);
 
             /* Translate the turtle to center the drawing */
-            var transformString = "T" + (params.x - TURTLE_X_ADJUSTMENT) + "," + (params.y - TURTLE_Y_ADJUSTMENT);
-            transformString    += "R" + (params.rotation + TURTLE_ROTATION_ADJUSTMENT);
+            var transformString = "T" + (params.newX - TURTLE_X_ADJUSTMENT) + "," + (params.newY - TURTLE_Y_ADJUSTMENT);
+            transformString    += "R" + (params.newRotation + TURTLE_ROTATION_ADJUSTMENT);
 
 	    if (animate) {
 		var copy = $.extend(true, {}, this);
-		ANIMATION_QUEUE.animateTransform(transformString, copy);
+		ANIMATION_QUEUE.animateAction({
+		    action: 'transform',
+		    turtle: this.turtle,
+		    penIsDown: this.penIsDown,
+		    transformString: transformString,
+		    color: this._color,
+		    oldX: params.oldX,
+		    oldY: params.oldY,
+                    newX: params.newX,
+                    newY: params.newY,
+                    oldRotation: params.oldRotation,
+		    newRotation: params.newRotation
+		}, copy);
 	    }
 	    else {
 		this.turtle.transform(transformString);
 		if (this.penIsDown) {
-		    PAPER.path("M" + this.oldX + "," + this.oldY + "L" + this.x + "," + this.y).attr({ stroke: this._color });
+		    PAPER.path("M" + params.oldX + "," + params.oldY + "L" + params.newX + "," + params.newY).attr({ stroke: this._color });
 		}
 	    }
         },
@@ -145,13 +184,18 @@ function Turtle() {
         move: function(x, y, animate) {
 	    animate = typeof animate !== 'undefined' ? animate : true;
 
-	    this.oldX = this.x;
-	    this.oldY = this.y;
+	    var oldX = this.x;
+	    var oldY = this.y;
 
             this.x += x;
             this.y += y;
 
-            this._transform({ x: this.x, y: this.y }, animate);
+            this._transform({ 
+		oldX: oldX,
+		oldY: oldY,
+		newX: this.x,
+		newY: this.y
+	    }, animate);
         },
         moveUp: function(amount) {
             this.move(0, -amount);
@@ -176,12 +220,18 @@ function Turtle() {
             this.font['font-family'] = family;
         },
         write: function(text) {
-            var text = PAPER.text(this.x, this.y, text);
-            text.attr(this.font);
+	    ANIMATION_QUEUE.animateAction({
+		action: 'text',
+		text: text,
+		x: this.x,
+		y: this.y,
+		font: this.font
+	    })
         },
         rotate: function(deg) {
-	    this.oldX = this.x;
-	    this.oldY = this.y;
+	    var oldX = this.x;
+	    var oldY = this.y;
+	    var oldRotation = this.rotation;
 
             this.rotation += deg;
             if (this.rotation > 180) {
@@ -191,7 +241,12 @@ function Turtle() {
                 this.rotation += 360;
             }
 
-            this._transform({ rotation: this.rotation });
+            this._transform({ 
+		oldRotation: oldRotation,
+		newRotation: this.rotation,
+		oldX: oldX,
+		oldY: oldY
+	    });
         },
         moveForward: function(distance) {
             var rad = deg2rad(this.rotation);
