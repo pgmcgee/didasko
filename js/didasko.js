@@ -53,9 +53,24 @@ function TurtleManager() {
 	addTurtle: function (turtle) {
 	    this.turtles.push(turtle);
 	},
+	allTurtlesToBack: function () {
+	    $.each(this.turtles, function (idx, turtle) {
+		turtle.toBack();
+	    });	    
+	},
 	allTurtlesToFront: function () {
 	    $.each(this.turtles, function (idx, turtle) {
 		turtle.toFront();
+	    });
+	},
+	allTurtlesHide: function () {
+	    $.each(this.turtles, function (idx, turtle) {
+		turtle.hide();
+	    });
+	},
+	allTurtlesShow: function () {
+	    $.each(this.turtles, function (idx, turtle) {
+		turtle.show();
 	    });
 	}
     };
@@ -99,7 +114,7 @@ function AnimationQueue() {
 
 		if (action.penIsDown && dist > 0) {
 		    var pathString = "M" + action.oldX + "," + action.oldY + "L" + action.newX + "," + action.newY;
-		    drawpath(PAPER, pathString, time, { stroke: action.color }, function() {});
+		    drawpath(PAPER, pathString, time, { stroke: action.color, 'stroke-width': action.stroke }, function() {});
 		}
 	    } else if (action.action = 'text') {
 		var text = PAPER.text(action.x, action.y, action.text);
@@ -132,6 +147,7 @@ function Turtle() {
         y: 15.099,
         rotation: 0,
         _color: "#000",
+	_stroke: 1,
         font: { 'font-family': 'Arial', 'font-size': '16px' },
         _transform: function(params, animate) {
 	    animate = typeof animate !== 'undefined' ? animate : true;
@@ -157,6 +173,7 @@ function Turtle() {
 		    penIsDown: this.penIsDown,
 		    transformString: transformString,
 		    color: this._color,
+		    stroke: this._stroke,
 		    oldX: params.oldX,
 		    oldY: params.oldY,
                     newX: params.newX,
@@ -168,7 +185,7 @@ function Turtle() {
 	    else {
 		this.turtle.transform(transformString);
 		if (this.penIsDown) {
-		    PAPER.path("M" + params.oldX + "," + params.oldY + "L" + params.newX + "," + params.newY).attr({ stroke: this._color });
+		    PAPER.path("M" + params.oldX + "," + params.oldY + "L" + params.newX + "," + params.newY).attr({ stroke: this._color, 'stroke-width': this._stroke });
 		}
 	    }
         },
@@ -213,6 +230,9 @@ function Turtle() {
             this._color = color;
             this.turtle.attr({ fill: this._color });
         },
+	stroke: function(width) {
+	    this._stroke = width;
+	},
         fontSize: function(size) {
             this.font['font-size'] = size;
         },
@@ -257,7 +277,22 @@ function Turtle() {
         },
         moveBackward: function(distance) {
             this.moveForward(-distance);
-        }
+        },
+	onLine: function() {
+	    return this.grabLine() !== null;
+	},
+	grabLine: function() {
+	    TURTLE_MANAGER.allTurtlesHide();
+	    var element = PAPER.getElementByPoint(this.x, this.y);
+	    TURTLE_MANAGER.allTurtlesShow();
+	    return element;
+	},
+	eraseLine: function() {
+	    if (!this.onLine()) { return; }
+
+	    var line = this.grabLine();
+	    line.remove();
+	}
     };
 
     TURTLE_MANAGER.addTurtle(Turtle.turtle);
@@ -287,6 +322,7 @@ turtle.moveUp(20);
 var another = Turtle();
 another.color('green');
 another.penDown();
+another.stroke(5);
 another.rotate(180);
 
 for(var i = 0; i < 4; i++) {
