@@ -297,3 +297,12 @@ for(var i = 0; i < 4; i++) {
 another.rotate(30);
 
 another.moveBackward(150);
+
+var third = Turtle();
+third.color('blue');
+third.penDown();
+
+for(var i = 0; i < 8; i++) {
+    third.moveForward(120);
+    third.rotate(45);
+}
